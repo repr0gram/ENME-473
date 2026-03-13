@@ -23,67 +23,90 @@ beta = deg2rad(3.5);
 in = 0:120;
 theta2_vals = deg2rad(in);
 
-%% Symbolic equations and Jacobian
-syms t23 t14 t46 t36 t8 t7 t2
-f1 = R2*cos(t2) + R23*cos(t23) - R14*cos(t14) - R1*cos(theta1);
-f2 = R2*sin(t2) + R23*sin(t23) - R14*sin(t14) - R1*sin(theta1);
-f3 = R2*cos(t2) + R4*cos(t23) + R46*cos(t46) - R36*cos(t36) - R3*cos(t14+alpha) - R1*cos(theta1);
-f4 = R2*sin(t2) + R4*sin(t23) + R46*sin(t46) - R36*sin(t36) - R3*sin(t14+alpha) - R1*sin(theta1);
-f5 = R2*cos(t2) + R4*cos(t23) + R6*cos(t46) + R8*cos(t8) - R7*cos(t7) - R5*cos(t36+beta) - R3*cos(t14+alpha) - R1*cos(theta1);
-f6 = R2*sin(t2) + R4*sin(t23) + R6*sin(t46) + R8*sin(t8) - R7*sin(t7) - R5*sin(t36+beta) - R3*sin(t14+alpha) - R1*sin(theta1);
-f_sym = [f1; f2; f3; f4; f5; f6];
-vars = [t23 t14 t46 t36 t8 t7];
-J_sym = jacobian(f_sym, vars);
-% Convert symbolic equations to numerical functions
-f_fun = matlabFunction(f_sym, 'Vars', {t23, t14, t46, t36, t8, t7, t2});
-J_fun = matlabFunction(J_sym, 'Vars', {t23, t14, t46, t36, t8, t7, t2});
-
 %% Posture Analysis (Newton-Raphson)
 
 % store initial guesses
 x = deg2rad([140 60 150 150 210 150])';
 
-% storage
-angles = zeros(6, length(in));
-Ax = zeros(1, length(in));
-Ay = zeros(1, length(in));
+% create storage for angle values (radians)
+theta23_vals = zeros(1, length(theta2_vals));
+theta14_vals = zeros(1, length(theta2_vals));
+theta46_vals = zeros(1, length(theta2_vals));
+theta36_vals = zeros(1, length(theta2_vals));
+theta8_vals  = zeros(1, length(theta2_vals));
+theta7_vals  = zeros(1, length(theta2_vals));
+
+% storage for Pin A coordinates
+Ax = zeros(1, length(theta2_vals));
+Ay = zeros(1, length(theta2_vals));
 
 % loop through input values
 for k = 1:length(theta2_vals)
     theta2 = theta2_vals(k);
+    theta23 = x(1); theta14 = x(2); theta46 = x(3);
+    theta36 = x(4); theta8  = x(5); theta7  = x(6);
 
     while true
-        F = f_fun(x(1), x(2), x(3), x(4), x(5), x(6), theta2);
-        J = J_fun(x(1), x(2), x(3), x(4), x(5), x(6), theta2);
-        dx = J\F;
+        % store the force matrix
+        f = [R2*cos(theta2) + R23*cos(theta23) - R14*cos(theta14) - R1*cos(theta1);
+            R2*sin(theta2) + R23*sin(theta23) - R14*sin(theta14) - R1*sin(theta1);
+            R2*cos(theta2) + R4*cos(theta23) + R46*cos(theta46) - R36*cos(theta36) - R3*cos(theta14+alpha) - R1*cos(theta1);
+            R2*sin(theta2) + R4*sin(theta23) + R46*sin(theta46) - R36*sin(theta36) - R3*sin(theta14+alpha) - R1*sin(theta1);
+            R2*cos(theta2) + R4*cos(theta23) + R6*cos(theta46) - R8*cos(theta8) + R7*cos(theta7) - R5*cos(theta36+beta) - R3*cos(theta14+alpha) - R1*cos(theta1);
+            R2*sin(theta2) + R4*sin(theta23) + R6*sin(theta46) - R8*sin(theta8) + R7*sin(theta7) - R5*sin(theta36+beta) - R3*sin(theta14+alpha) - R1*sin(theta1)];
+
+        % store the jacobian
+        J = [-R23*sin(theta23),  R14*sin(theta14),              0,                    0,             0,            0;
+            R23*cos(theta23), -R14*cos(theta14),              0,                    0,             0,            0;
+            -R4*sin(theta23),   R3*sin(theta14+alpha), -R46*sin(theta46),  R36*sin(theta36),       0,            0;
+            R4*cos(theta23),  -R3*cos(theta14+alpha),  R46*cos(theta46), -R36*cos(theta36),       0,            0;
+            -R4*sin(theta23),   R3*sin(theta14+alpha), -R6*sin(theta46),   R5*sin(theta36+beta),  R8*sin(theta8), -R7*sin(theta7);
+            R4*cos(theta23),  -R3*cos(theta14+alpha),  R6*cos(theta46),  -R5*cos(theta36+beta), -R8*cos(theta8),  R7*cos(theta7)];
+
+        dx = J\f;
         x_new = x - dx;
         x_new = atan2(sin(x_new), cos(x_new));
 
-        if norm(F,inf) < 1e-6 && norm(x_new - x,inf) < 1e-6
+        if norm(f,inf) < 1e-6 && norm(x_new - x,inf) < 1e-6
             x = x_new;
             break;
         end
         x = x_new;
+        theta23 = x(1); theta14 = x(2); theta46 = x(3);
+        theta36 = x(4); theta8  = x(5); theta7  = x(6);
     end
 
-    angles(:,k) = x;
+    % store posture results
+    theta23_vals(k) = x(1);
+    theta14_vals(k) = x(2);
+    theta46_vals(k) = x(3);
+    theta36_vals(k) = x(4);
+    theta8_vals(k)  = x(5);
+    theta7_vals(k)  = x(6);
 
-    % compute Pin A position
-    Ax(k) = R2*cos(theta2) + R4*cos(x(1)) + R6*cos(x(3)) + (R8 + RA)*cos(x(5));
-    Ay(k) = R2*sin(theta2) + R4*sin(x(1)) + R6*sin(x(3)) + (R8 + RA)*sin(x(5));
+    % compute Pin A position: Origin -> R2 -> R4 -> R6 -> (R8+RA) extension
+    % theta4 = theta23, theta6 = theta46
+    Ax(k) = R2*cos(theta2) + R4*cos(x(1)) + R6*cos(x(3)) - (R8 + RA)*cos(x(5));
+    Ay(k) = R2*sin(theta2) + R4*sin(x(1)) + R6*sin(x(3)) - (R8 + RA)*sin(x(5));
 end
 
 %% Post-process Angles
 
 % convert to degrees with unwrapping
-angles = rad2deg(unwrap(angles, [], 2));
-theta3_vals = angles(2,:) + rad2deg(alpha);
-theta4_vals = angles(1,:);
-theta5_vals = angles(4,:) + rad2deg(beta);
-theta6_vals = angles(3,:);
-theta7_vals = angles(6,:);
-theta8_vals = angles(5,:);
+theta23_vals = rad2deg(unwrap(theta23_vals));
+theta14_vals = rad2deg(unwrap(theta14_vals));
+theta46_vals = rad2deg(unwrap(theta46_vals));
+theta36_vals = rad2deg(unwrap(theta36_vals));
+theta8_vals  = rad2deg(unwrap(theta8_vals));
+theta7_vals  = rad2deg(unwrap(theta7_vals));
 
+% calculate actual link angles using constraint equations
+theta3_vals = theta14_vals + rad2deg(alpha);
+theta4_vals = theta23_vals;
+theta5_vals = theta36_vals + rad2deg(beta);
+theta6_vals = theta46_vals;
+theta7_vals = theta7_vals +180;
+theta8_vals = theta8_vals +180;
 
 %% Plot 1: Link Angles vs Input Angle (Q3a)
 figure
@@ -123,17 +146,19 @@ box on
 axis equal
 %exportgraphics(gcf, 'ENME_473_Project_3c.png', 'Resolution', 600);
 
+%% Print tabular results (Q3a) - Link Angles
+fprintf('\n=== Link Angles (degrees) ===\n');
+fprintf('%10s %10s %10s %10s %10s %10s %10s\n', ...
+    'Theta 2', 'Theta 3', 'Theta 4', 'Theta 5', 'Theta 6', 'Theta 7', 'Theta 8');
+for k = 1:length(in)
+    fprintf('%10d %10.2f %10.2f %10.2f %10.2f %10.2f %10.2f\n', ...
+        in(k), theta3_vals(k), theta4_vals(k), theta5_vals(k), ...
+        theta6_vals(k), theta7_vals(k), theta8_vals(k));
+end
+
 %% Print tabular results (Q3c)
 fprintf('\n=== Pin A Position (mm) ===\n');
 fprintf('%10s %12s %12s\n', 'Theta 2', 'X_A', 'Y_A');
 for k = 1:length(in)
     fprintf('%10d %12.2f %12.2f\n', in(k), Ax(k), Ay(k));
 end
-
-%% Display Angles Table
-angles_table = table(in', ...
-    theta3_vals', theta4_vals', theta5_vals', ...
-    theta6_vals', theta7_vals', theta8_vals', ...
-    'VariableNames', {'Input Angle','theta3','theta4','theta5','theta6','theta7','theta8'});
-disp('Link Angles (deg)')
-disp(angles_table)
