@@ -167,32 +167,25 @@ box on
 axis equal
 %exportgraphics(gcf, 'ENME_473_Project_3c.png', 'Resolution', 600);
 
-%% Print tabular results (Q3a) - Link Angles
-fprintf('\n=== Link Angles (degrees) ===\n');
-fprintf('%10s %10s %10s %10s %10s %10s %10s\n', ...
-    'Theta 2', 'Theta 3', 'Theta 4', 'Theta 5', 'Theta 6', 'Theta 7', 'Theta 8');
-for k = 1:length(in)
-    fprintf('%10d %10.2f %10.2f %10.2f %10.2f %10.2f %10.2f\n', ...
-        in(k), theta3_vals(k), theta4_vals(k), theta5_vals(k), ...
-        theta6_vals(k), theta7_vals(k), theta8_vals(k));
-end
+%% Write tables to Excel
+filename = 'Q3_Results.xlsx';
 
-%% Print tabular results (Q3c)
-fprintf('\n=== Pin A Position (mm) ===\n');
-fprintf('%10s %12s %12s\n', 'Theta 2', 'X_A', 'Y_A');
-for k = 1:length(in)
-    fprintf('%10d %12.2f %12.2f\n', in(k), Ax(k), Ay(k));
-end
+% Q3a - Link Angles
+T_angles = table(in', theta3_vals', theta4_vals', theta5_vals', ...
+    theta6_vals', theta7_vals', theta8_vals', ...
+    'VariableNames', {'Theta2_deg','Theta3','Theta4','Theta5','Theta6','Theta7','Theta8'});
+writetable(T_angles, filename, 'Sheet', 'Link Angles');
 
-%% Print tabular results (Q3b) - Angular Velocities
+% Q3b - Angular Velocities
 % omegas rows: [t23, t14, t46, t36, t8, t7]
-% omega3 = omega14 (row 2), omega4 = omega23 (row 1), omega5 = omega36 (row 4),
-% omega6 = omega46 (row 3), omega7 = row 6, omega8 = row 5
-fprintf('\n=== Angular Velocities (rad/s) ===\n');
-fprintf('%10s %10s %10s %10s %10s %10s %10s\n', ...
-    'Theta 2', 'omega3', 'omega4', 'omega5', 'omega6', 'omega7', 'omega8');
-for k = 1:length(in)
-    fprintf('%10d %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n', ...
-        in(k), omegas(2,k), omegas(1,k), omegas(4,k), ...
-        omegas(3,k), omegas(6,k), omegas(5,k));
-end
+T_vel = table(in', omegas(2,:)', omegas(1,:)', omegas(4,:)', ...
+    omegas(3,:)', omegas(6,:)', omegas(5,:)', ...
+    'VariableNames', {'Theta2_deg','omega3','omega4','omega5','omega6','omega7','omega8'});
+writetable(T_vel, filename, 'Sheet', 'Angular Velocities');
+
+% Q3c - Pin A Position
+T_pinA = table(in', Ax', Ay', ...
+    'VariableNames', {'Theta2_deg','X_A_mm','Y_A_mm'});
+writetable(T_pinA, filename, 'Sheet', 'Pin A Position');
+
+fprintf('Q3 results written to %s\n', filename);

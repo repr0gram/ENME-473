@@ -171,22 +171,19 @@ grid on
 box on
 %exportgraphics(gcf, 'ENME_473_Project_4a_acceleration.png', 'Resolution', 600);
 
-%% Print tabular results - Angular Velocities
-fprintf('\n=== Angular Velocities (rad/s) ===\n');
-fprintf('%10s %10s %10s %10s %10s %10s %10s\n', ...
-    'Theta 2', 'omega3', 'omega4', 'omega5', 'omega6', 'omega7', 'omega8');
-for k = 1:length(in)
-    fprintf('%10d %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n', ...
-        in(k), omega3_vals(k), omega4_vals(k), omega5_vals(k), ...
-        omega6_vals(k), omega7_vals(k), omega8_vals(k));
-end
+%% Write tables to Excel
+filename = 'Q4_Results.xlsx';
 
-%% Print tabular results - Angular Accelerations
-fprintf('\n=== Angular Accelerations (rad/s^2) ===\n');
-fprintf('%10s %10s %10s %10s %10s %10s %10s\n', ...
-    'Theta 2', 'alpha3', 'alpha4', 'alpha5', 'alpha6', 'alpha7', 'alpha8');
-for k = 1:length(in)
-    fprintf('%10d %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n', ...
-        in(k), alpha3_vals(k), alpha4_vals(k), alpha5_vals(k), ...
-        alpha6_vals(k), alpha7_vals(k), alpha8_vals(k));
-end
+% Angular Velocities
+T_vel = table(in', omega3_vals', omega4_vals', omega5_vals', ...
+    omega6_vals', omega7_vals', omega8_vals', ...
+    'VariableNames', {'Theta2_deg','omega3','omega4','omega5','omega6','omega7','omega8'});
+writetable(T_vel, filename, 'Sheet', 'Angular Velocities');
+
+% Angular Accelerations
+T_acc = table(in', alpha3_vals', alpha4_vals', alpha5_vals', ...
+    alpha6_vals', alpha7_vals', alpha8_vals', ...
+    'VariableNames', {'Theta2_deg','alpha3','alpha4','alpha5','alpha6','alpha7','alpha8'});
+writetable(T_acc, filename, 'Sheet', 'Angular Accelerations');
+
+fprintf('Q4 results written to %s\n', filename);
