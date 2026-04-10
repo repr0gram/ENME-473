@@ -72,6 +72,17 @@ legend("Path", "\theta_2 = 0°", "\theta_2 = 120° (Goal)", Location="best")
 grid on; axis equal; box on
 exportgraphics(gcf, fullfile(scriptDir, "ENME473_Q7_Original.png"), Resolution=600);
 
+%% plot original mechanism and path every 15 deg from 0 to 120
+plotAnglesFigure(boxInfo.allJoints, pinA, 0:15:120, goalX, goalY, "Original");
+exportgraphics(gcf, fullfile(scriptDir, "ENME473_Q7_Original_Angles.png"), Resolution=600);
+
+%% summary table: box dimensions and area every 5 deg (original)
+xlsxPath = fullfile(scriptDir, "ENME473_Q7_BoxDimensions.xlsx");
+if isfile(xlsxPath)
+    delete(xlsxPath) % start fresh each run
+end
+printAngleTable(boxInfo.allJoints, "Original", xlsxPath);
+
 %% design parameter search
 % parameters to vary:
 %   (a) ground pivot O4 location: (xO4, yO4)
@@ -189,6 +200,13 @@ if ~isempty(results)
     grid on; axis equal; box on
     exportgraphics(gcf, fullfile(scriptDir, "ENME473_Q7_BestDesign.png"), Resolution=600);
 
+    % plot best design every 15 deg from 0 to 120
+    plotAnglesFigure(bx_best.allJoints, pA_best, 0:15:120, goalX, goalY, "Best");
+    exportgraphics(gcf, fullfile(scriptDir, "ENME473_Q7_BestDesign_Angles.png"), Resolution=600);
+
+    % summary table: box dimensions and area every 5 deg (best)
+    printAngleTable(bx_best.allJoints, "Best", xlsxPath);
+
     % report second best (different parameter combination)
     if length(results) >= 2
         alt = results(2);
@@ -279,6 +297,7 @@ function [allAngles, pinA, boxInfo] = solveDesign(R2, R23, R14, R3, R4, ...
     rawAngles = zeros(6, N);
     Ax = zeros(1, N);
     Ay = zeros(1, N);
+    allJoints = zeros(11, 2, N);
 
     x = x0;
     maxIter = 200;
@@ -328,41 +347,43 @@ function [allAngles, pinA, boxInfo] = solveDesign(R2, R23, R14, R3, R4, ...
         % Pin A position
         Ax(k) = R2*cos(theta2) + R4*cos(theta23+gamma) + R6*cos(theta46) - RAtot*cos(theta8);
         Ay(k) = R2*sin(theta2) + R4*sin(theta23+gamma) + R6*sin(theta46) - RAtot*sin(theta8);
+
+        % all joint positions at this theta2
+        O2 = [0, 0];
+        O4 = [R1*cos(theta1), R1*sin(theta1)];
+        JointA  = [R2*cos(theta2), R2*sin(theta2)];
+        Joint43 = JointA + [R23*cos(theta23), R23*sin(theta23)];
+        JointB  = JointA + [R4*cos(theta23+gamma), R4*sin(theta23+gamma)];
+        JointD  = O4 + [R3*cos(theta14+alpha), R3*sin(theta14+alpha)];
+        JointC  = JointB + [R46*cos(theta46), R46*sin(theta46)];
+        P1      = JointB + [R6*cos(theta46), R6*sin(theta46)];
+        P2      = P1 - [R8*cos(theta8), R8*sin(theta8)];
+        JointE7 = P2 + [R7*cos(theta7), R7*sin(theta7)];
+        PinA_pos = [Ax(k), Ay(k)];
+        allJoints(:,:,k) = [O2; O4; JointA; Joint43; JointB; JointD; JointC; P1; P2; JointE7; PinA_pos];
     end
 
     allAngles.raw = rawAngles;
     pinA.Ax = Ax;
     pinA.Ay = Ay;
 
-    % bounding box at theta2 = 0 (k = 1)
-    theta2 = 0;
-    theta23 = rawAngles(1,1); theta14 = rawAngles(2,1); theta46 = rawAngles(3,1);
-    theta36 = rawAngles(4,1); theta8  = rawAngles(5,1); theta7  = rawAngles(6,1);
-
-    % compute all joint positions at theta2 = 0
-    O2 = [0, 0];
-    O4 = [R1*cos(theta1), R1*sin(theta1)];
-    JointA  = [R2*cos(theta2), R2*sin(theta2)];
-    Joint43 = JointA + [R23*cos(theta23), R23*sin(theta23)];
-    JointB  = JointA + [R4*cos(theta23+gamma), R4*sin(theta23+gamma)];
-    JointD  = O4 + [R3*cos(theta14+alpha), R3*sin(theta14+alpha)];
-    JointC  = JointB + [R46*cos(theta46), R46*sin(theta46)];
-    P1      = JointB + [R6*cos(theta46), R6*sin(theta46)];
-    P2      = P1 - [R8*cos(theta8), R8*sin(theta8)];
-    JointE7 = P2 + [R7*cos(theta7), R7*sin(theta7)];
-    PinA_pos = [Ax(1), Ay(1)];
-
-    allPts = [O2; O4; JointA; Joint43; JointB; JointD; JointC; P1; P2; JointE7; PinA_pos];
-
-    boxInfo.xmin   = min(allPts(:,1));
-    boxInfo.xmax   = max(allPts(:,1));
-    boxInfo.ymin   = min(allPts(:,2));
-    boxInfo.ymax   = max(allPts(:,2));
-    boxInfo.width  = boxInfo.xmax - boxInfo.xmin;
-    boxInfo.height = boxInfo.ymax - boxInfo.ymin;
-    boxInfo.area   = boxInfo.width * boxInfo.height;
+    % bounding box at theta2 = 0
+    allPts = allJoints(:,:,1);
+    boxInfo = boxFromPts(allPts);
     boxInfo.joints = allPts;
     boxInfo.labels = ["O2"; "O4"; "A"; "43"; "B"; "D"; "C"; "P1"; "P2"; "E7"; "PinA"];
+    boxInfo.allJoints = allJoints;
+end
+
+function bx = boxFromPts(pts)
+% compute bounding box info from a set of (x,y) points
+    bx.xmin   = min(pts(:,1));
+    bx.xmax   = max(pts(:,1));
+    bx.ymin   = min(pts(:,2));
+    bx.ymax   = max(pts(:,2));
+    bx.width  = bx.xmax - bx.xmin;
+    bx.height = bx.ymax - bx.ymin;
+    bx.area   = bx.width * bx.height;
 end
 
 function plotMechanism(joints, pinAx, pinAy, boxInfo)
@@ -409,4 +430,52 @@ function plotMechanism(joints, pinAx, pinAy, boxInfo)
     xlabel("X (mm)"); ylabel("Y (mm)")
     grid on; axis equal; box on
     hold off
+end
+
+function plotAnglesFigure(allJoints, pinA, anglesDeg, goalX, goalY, label)
+% plot mechanism, bounding box, and pin A path at multiple theta2 angles
+    n = length(anglesDeg);
+    nCols = ceil(sqrt(n));
+    nRows = ceil(n / nCols);
+    figure("Position", [100, 100, 350*nCols, 300*nRows])
+    for i = 1:n
+        ang = anglesDeg(i);
+        idx = ang + 1; % theta2 = 0:120 deg, 1-indexed
+        subplot(nRows, nCols, i)
+        jts = allJoints(:,:,idx);
+        bx = boxFromPts(jts);
+        plotMechanism(jts, pinA.Ax(idx), pinA.Ay(idx), bx);
+        hold on
+        plot(pinA.Ax(1:idx), pinA.Ay(1:idx), "b:", LineWidth=1.5)
+        plot(goalX, goalY, "rs", MarkerSize=8, MarkerFaceColor="r")
+        title(sprintf("\\theta_2 = %d°  (Box: %.0f × %.0f mm)", ang, bx.width, bx.height))
+        hold off
+    end
+    sgtitle(label + " Design: Mechanism, Bounding Box, and Pin A Path")
+end
+
+function printAngleTable(allJoints, label, xlsxPath)
+% print bounding box dimensions and area every 5 deg from 0 to 120
+% and export the table to an Excel file (one sheet per design)
+    angles = (0:5:120)';
+    N = length(angles);
+    width  = zeros(N, 1);
+    height = zeros(N, 1);
+    area   = zeros(N, 1);
+    for i = 1:N
+        idx = angles(i) + 1; % theta2 = 0:120 deg, 1-indexed
+        bx = boxFromPts(allJoints(:,:,idx));
+        width(i)  = bx.width;
+        height(i) = bx.height;
+        area(i)   = bx.area;
+    end
+
+    T = table(angles, width, height, area, ...
+        VariableNames=["Theta2_deg", "Width_mm", "Height_mm", "Area_mm2"]);
+
+    fprintf("\n=== %s DESIGN: BOX DIMENSIONS vs theta2 ===\n", upper(label));
+    disp(T)
+
+    writetable(T, xlsxPath, Sheet=label, WriteMode="overwritesheet");
+    fprintf("Exported to: %s (sheet: %s)\n", xlsxPath, label);
 end
