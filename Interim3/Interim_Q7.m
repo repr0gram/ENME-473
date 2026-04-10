@@ -1,13 +1,25 @@
 % ENME 473 Project - Part III: Design (Question 7)
 % finds the "goal" Pin A position at theta2 = 120 deg,
 % computes the enclosing box at theta2 = 0 deg,
-% and systematically varies design parameters to minimize box area.
+% and systematically varies three design parameters:
+%   (a) ground link angle theta1 (|R1| held fixed; right pin at origin)
+%   (b) dP1A: distance from Pin A to the far link-8 pin  (originally 580.7)
+%   (c) dP2A: distance from Pin A to the near link-8 pin (originally 336.9)
+% Pin A is offset from the P1-P2 axis — its position is obtained by
+% triangulating the rigid triangle formed by P1, P2, and Pin A on link 8.
 
 clc; clear; close all;
 scriptDir = fileparts(mfilename('fullpath'));
 
+% single tabbed figure window to hold all four plots
+mainFig = figure(Name="ENME 473 Q7 Results", Position=[100 100 1400 900]);
+mainTabs = uitabgroup(mainFig);
+
+% collect all mechanism-plot axes so they can share xlim/ylim at the end
+mechAxes = gobjects(0);
+
 %% original geometry (mm)
-R1_orig  = sqrt(237.2^2 + 70.6^2);
+R1  = sqrt(237.2^2 + 70.6^2); % ground-link length is held FIXED across designs
 R2  = 272.4;
 R23 = 236.9;
 R14 = 279.0;
@@ -18,17 +30,24 @@ R46 = 179.3;
 R5  = 595.5;
 R6  = 378.9;
 R7  = 198.2;
-R8_orig  = 254.4;
-RA_orig  = 336.9;
+R8  = 254.4;     % fixed: distance between the two pins on link 8
+
+% link-8 triangle side lengths (design parameters b, c)
+dP1A_orig = 580.7; % |Pin A - P1|, far link-8 pin
+dP2A_orig = 336.9; % |Pin A - P2|, near link-8 pin
+
+% which side of the P1->P2 axis Pin A sits on (+1 or -1)
+% flip this if the plotted mechanism does not match the PDF figure
+pinASide = -1;
 
 theta1_orig = deg2rad(180 - atand(70.6/237.2));
 alpha  = deg2rad(3.2);
 beta   = deg2rad(3.5);
 gamma  = deg2rad(1.8);
 
-% ground pivot O4 original position (mm)
-xO4_orig = -237.2;
-yO4_orig = 70.6;
+% ground pivot O4 original position (mm), derived from R1 and theta1
+xO4_orig = R1*cos(theta1_orig);
+yO4_orig = R1*sin(theta1_orig);
 
 %% solve original design
 fprintf("=== ORIGINAL DESIGN ===\n");
@@ -38,7 +57,8 @@ x0 = deg2rad([167.5; -4.0; 10.7; 165.4; -4.8; -171.3]);
 
 % solve full range 0-120 deg
 [allAngles, pinA, boxInfo] = solveDesign(R2, R23, R14, R3, R4, R36, R46, ...
-    R5, R6, R7, R8_orig, RA_orig, R1_orig, theta1_orig, alpha, beta, gamma, x0);
+    R5, R6, R7, R8, dP1A_orig, dP2A_orig, pinASide, R1, theta1_orig, ...
+    alpha, beta, gamma, x0);
 
 % goal: Pin A at theta2 = 120 deg (last entry)
 goalX = pinA.Ax(end);
@@ -56,12 +76,14 @@ fprintf("  Y range: [%.2f, %.2f]\n", boxInfo.ymin, boxInfo.ymax);
 origArea = boxInfo.area;
 
 %% plot original Pin A path and mechanism at theta2 = 0
-figure
-subplot(1, 2, 1)
+tabOrig = uitab(mainTabs, Title="Original");
+tlOrig = tiledlayout(tabOrig, 1, 2);
+nexttile(tlOrig)
 plotMechanism(boxInfo.joints, pinA.Ax(1), pinA.Ay(1), boxInfo);
 title("Mechanism at \theta_2 = 0° (Original)")
+mechAxes(end+1) = gca;
 
-subplot(1, 2, 2)
+nexttile(tlOrig)
 plot(pinA.Ax, pinA.Ay, "b-", LineWidth=2)
 hold on
 plot(pinA.Ax(1), pinA.Ay(1), "go", MarkerSize=10, MarkerFaceColor="g")
@@ -70,11 +92,13 @@ xlabel("X (mm)"); ylabel("Y (mm)")
 title("Pin A Path (Original)")
 legend("Path", "\theta_2 = 0°", "\theta_2 = 120° (Goal)", Location="best")
 grid on; axis equal; box on
-exportgraphics(gcf, fullfile(scriptDir, "ENME473_Q7_Original.png"), Resolution=600);
+exportgraphics(tlOrig, fullfile(scriptDir, "ENME473_Q7_Original.png"), Resolution=600);
 
 %% plot original mechanism and path every 15 deg from 0 to 120
-plotAnglesFigure(boxInfo.allJoints, pinA, 0:15:120, goalX, goalY, "Original");
-exportgraphics(gcf, fullfile(scriptDir, "ENME473_Q7_Original_Angles.png"), Resolution=600);
+tabOrigAng = uitab(mainTabs, Title="Original Angles");
+tlOrigAng = plotAnglesFigure(boxInfo.allJoints, pinA, 0:15:120, goalX, goalY, "Original", tabOrigAng);
+mechAxes = [mechAxes(:); findobj(tlOrigAng, Type="axes")];
+exportgraphics(tlOrigAng, fullfile(scriptDir, "ENME473_Q7_Original_Angles.png"), Resolution=600);
 
 %% summary table: box dimensions and area every 5 deg (original)
 xlsxPath = fullfile(scriptDir, "ENME473_Q7_BoxDimensions.xlsx");
@@ -84,74 +108,68 @@ end
 printAngleTable(boxInfo.allJoints, "Original", xlsxPath);
 
 %% design parameter search
-% parameters to vary:
-%   (a) ground pivot O4 location: (xO4, yO4)
-%   (b) RA: distance from Pin A to joint 7/8
-%   (c) R8: distance from joint 6/8 to joint 7/8
+% three design parameters:
+%   (a) theta1 — ground-link angle (|R1| fixed; O2 pinned at origin)
+%   (b) dP1A  — distance from Pin A to the far link-8 pin (was 580.7)
+%   (c) dP2A  — distance from Pin A to the near link-8 pin (was 336.9)
 %
-% strategy: grid search around original values, then report best designs.
-% for each candidate, check if Pin A passes near the "goal" at any theta2.
+% for each candidate: solve 0..120 deg, check Pin A reaches near the goal,
+% and keep those with a smaller bounding box at theta2 = 0.
 
 goalTol = 15; % mm tolerance for reaching goal position
 
-% search ranges (vary +-20% around original, coarse then fine)
-xO4_range = linspace(xO4_orig - 50, xO4_orig + 50, 11);
-yO4_range = linspace(yO4_orig - 30, yO4_orig + 30, 7);
-RA_range  = linspace(RA_orig*0.7, RA_orig*1.1, 9);
-R8_range  = linspace(R8_orig*0.8, R8_orig*1.1, 7);
+% search ranges
+theta1_range = linspace(theta1_orig - deg2rad(15), theta1_orig + deg2rad(15), 21);
+dP1A_range   = linspace(dP1A_orig*0.8, dP1A_orig*1.1, 16);
+dP2A_range   = linspace(dP2A_orig*0.7, dP2A_orig*1.1, 17);
 
-% get the converged angles from the original design to use as adaptive guess
-x0_base = allAngles.raw(:, 1); % converged solution at theta2 = 0 for original
+% converged angles from the original design — used as NR initial guess
+x0_base = allAngles.raw(:, 1);
 
 % storage for results
 results = [];
-nTotal = length(xO4_range) * length(yO4_range) * length(RA_range) * length(R8_range);
+nTotal = length(theta1_range) * length(dP1A_range) * length(dP2A_range);
 fprintf("\n=== DESIGN SEARCH ===\n");
 fprintf("Evaluating %d design candidates...\n", nTotal);
 
-count = 0;
-for iX = 1:length(xO4_range)
-    for iY = 1:length(yO4_range)
-        xO4 = xO4_range(iX);
-        yO4 = yO4_range(iY);
+for iT = 1:length(theta1_range)
+    theta1_c = theta1_range(iT);
+    for iD1 = 1:length(dP1A_range)
+        for iD2 = 1:length(dP2A_range)
+            dP1A_c = dP1A_range(iD1);
+            dP2A_c = dP2A_range(iD2);
 
-        R1_new = sqrt(xO4^2 + yO4^2);
-        theta1_new = atan2(yO4, xO4);
+            % triangle inequality must hold for a valid link-8 geometry
+            if dP1A_c + dP2A_c <= R8 || abs(dP1A_c - dP2A_c) >= R8
+                continue
+            end
 
-        for iRA = 1:length(RA_range)
-            for iR8 = 1:length(R8_range)
-                RA_new = RA_range(iRA);
-                R8_new = R8_range(iR8);
-                count = count + 1;
+            try
+                [~, pA, bx] = solveDesign(R2, R23, R14, R3, R4, R36, R46, ...
+                    R5, R6, R7, R8, dP1A_c, dP2A_c, pinASide, ...
+                    R1, theta1_c, alpha, beta, gamma, x0_base);
 
-                try
-                    % use converged original solution as initial guess
-                    % so NR can track the solution as parameters shift
-                    [~, pA, bx] = solveDesign(R2, R23, R14, R3, R4, R36, R46, ...
-                        R5, R6, R7, R8_new, RA_new, R1_new, theta1_new, ...
-                        alpha, beta, gamma, x0_base);
+                % check if Pin A passes near goal at any theta2
+                dist = sqrt((pA.Ax - goalX).^2 + (pA.Ay - goalY).^2);
+                [minDist, idxMin] = min(dist);
 
-                    % check if Pin A passes near goal at any theta2
-                    dist = sqrt((pA.Ax - goalX).^2 + (pA.Ay - goalY).^2);
-                    [minDist, idxMin] = min(dist);
-
-                    if minDist < goalTol && bx.area < origArea
-                        r.xO4    = xO4;
-                        r.yO4    = yO4;
-                        r.RA     = RA_new;
-                        r.R8     = R8_new;
-                        r.area   = bx.area;
-                        r.width  = bx.width;
-                        r.height = bx.height;
-                        r.goalDist = minDist;
-                        r.goalTheta2 = idxMin - 1; % degrees
-                        r.goalAx = pA.Ax(idxMin);
-                        r.goalAy = pA.Ay(idxMin);
-                        results = [results; r]; %#ok<AGROW>
-                    end
-                catch
-                    % NR did not converge for this design — skip
+                if minDist < goalTol && bx.area < origArea
+                    r.theta1 = theta1_c;
+                    r.dP1A   = dP1A_c;
+                    r.dP2A   = dP2A_c;
+                    r.xO4    = R1*cos(theta1_c);
+                    r.yO4    = R1*sin(theta1_c);
+                    r.area   = bx.area;
+                    r.width  = bx.width;
+                    r.height = bx.height;
+                    r.goalDist = minDist;
+                    r.goalTheta2 = idxMin - 1; % degrees
+                    r.goalAx = pA.Ax(idxMin);
+                    r.goalAy = pA.Ay(idxMin);
+                    results = [results; r]; %#ok<AGROW>
                 end
+            catch
+                % NR did not converge for this design — skip
             end
         end
     end
@@ -169,8 +187,10 @@ if ~isempty(results)
     % report best design
     best = results(1);
     fprintf("\n=== BEST DESIGN ===\n");
-    fprintf("Ground pivot O4: (%.2f, %.2f) mm\n", best.xO4, best.yO4);
-    fprintf("RA = %.2f mm,  R8 = %.2f mm\n", best.RA, best.R8);
+    fprintf("Ground pivot O4: (%.2f, %.2f) mm  [theta1 = %.2f deg]\n", ...
+        best.xO4, best.yO4, rad2deg(best.theta1));
+    fprintf("dP1A = %.2f mm  (was %.2f)\n", best.dP1A, dP1A_orig);
+    fprintf("dP2A = %.2f mm  (was %.2f)\n", best.dP2A, dP2A_orig);
     fprintf("Enclosing box: %.2f x %.2f mm,  Area = %.2f mm^2\n", ...
         best.width, best.height, best.area);
     fprintf("Area reduction: %.2f%%\n", (1 - best.area/origArea)*100);
@@ -180,16 +200,17 @@ if ~isempty(results)
 
     % plot best design
     [~, pA_best, bx_best] = solveDesign(R2, R23, R14, R3, R4, R36, R46, ...
-        R5, R6, R7, best.R8, best.RA, ...
-        sqrt(best.xO4^2 + best.yO4^2), atan2(best.yO4, best.xO4), ...
-        alpha, beta, gamma, x0_base);
+        R5, R6, R7, R8, best.dP1A, best.dP2A, pinASide, ...
+        R1, best.theta1, alpha, beta, gamma, x0_base);
 
-    figure
-    subplot(1, 2, 1)
+    tabBest = uitab(mainTabs, Title="Best");
+    tlBest = tiledlayout(tabBest, 1, 2);
+    nexttile(tlBest)
     plotMechanism(bx_best.joints, pA_best.Ax(1), pA_best.Ay(1), bx_best);
     title("Mechanism at \theta_2 = 0° (Best Design)")
+    mechAxes(end+1) = gca;
 
-    subplot(1, 2, 2)
+    nexttile(tlBest)
     plot(pA_best.Ax, pA_best.Ay, "b-", LineWidth=2)
     hold on
     plot(pA_best.Ax(1), pA_best.Ay(1), "go", MarkerSize=10, MarkerFaceColor="g")
@@ -198,11 +219,35 @@ if ~isempty(results)
     title("Pin A Path (Best Design)")
     legend("Path", "\theta_2 = 0°", "Goal", Location="best")
     grid on; axis equal; box on
-    exportgraphics(gcf, fullfile(scriptDir, "ENME473_Q7_BestDesign.png"), Resolution=600);
+    exportgraphics(tlBest, fullfile(scriptDir, "ENME473_Q7_BestDesign.png"), Resolution=600);
 
     % plot best design every 15 deg from 0 to 120
-    plotAnglesFigure(bx_best.allJoints, pA_best, 0:15:120, goalX, goalY, "Best");
-    exportgraphics(gcf, fullfile(scriptDir, "ENME473_Q7_BestDesign_Angles.png"), Resolution=600);
+    tabBestAng = uitab(mainTabs, Title="Best Angles");
+    tlBestAng = plotAnglesFigure(bx_best.allJoints, pA_best, 0:15:120, goalX, goalY, "Best", tabBestAng);
+    mechAxes = [mechAxes(:); findobj(tlBestAng, Type="axes")];
+    exportgraphics(tlBestAng, fullfile(scriptDir, "ENME473_Q7_BestDesign_Angles.png"), Resolution=600);
+
+    % unify xlim/ylim across all mechanism plots so original vs best
+    % are directly comparable. pad by 5% of each axis range.
+    allPts = cat(1, boxInfo.allJoints, bx_best.allJoints);
+    xMin = min(allPts(:,1,:), [], "all");
+    xMax = max(allPts(:,1,:), [], "all");
+    yMin = min(allPts(:,2,:), [], "all");
+    yMax = max(allPts(:,2,:), [], "all");
+    padX = 0.05 * (xMax - xMin);
+    padY = 0.05 * (yMax - yMin);
+    sharedXLim = [xMin - padX, xMax + padX];
+    sharedYLim = [yMin - padY, yMax + padY];
+    for i = 1:numel(mechAxes)
+        xlim(mechAxes(i), sharedXLim)
+        ylim(mechAxes(i), sharedYLim)
+    end
+
+    % re-export figures now that limits have been unified
+    exportgraphics(tlOrig, fullfile(scriptDir, "ENME473_Q7_Original.png"), Resolution=600);
+    exportgraphics(tlOrigAng, fullfile(scriptDir, "ENME473_Q7_Original_Angles.png"), Resolution=600);
+    exportgraphics(tlBest, fullfile(scriptDir, "ENME473_Q7_BestDesign.png"), Resolution=600);
+    exportgraphics(tlBestAng, fullfile(scriptDir, "ENME473_Q7_BestDesign_Angles.png"), Resolution=600);
 
     % summary table: box dimensions and area every 5 deg (best)
     printAngleTable(bx_best.allJoints, "Best", xlsxPath);
@@ -211,8 +256,9 @@ if ~isempty(results)
     if length(results) >= 2
         alt = results(2);
         fprintf("\n=== ALTERNATE DESIGN ===\n");
-        fprintf("Ground pivot O4: (%.2f, %.2f) mm\n", alt.xO4, alt.yO4);
-        fprintf("RA = %.2f mm,  R8 = %.2f mm\n", alt.RA, alt.R8);
+        fprintf("Ground pivot O4: (%.2f, %.2f) mm  [theta1 = %.2f deg]\n", ...
+            alt.xO4, alt.yO4, rad2deg(alt.theta1));
+        fprintf("dP1A = %.2f mm,  dP2A = %.2f mm\n", alt.dP1A, alt.dP2A);
         fprintf("Enclosing box: %.2f x %.2f mm,  Area = %.2f mm^2\n", ...
             alt.width, alt.height, alt.area);
         fprintf("Area reduction: %.2f%%\n", (1 - alt.area/origArea)*100);
@@ -223,37 +269,37 @@ else
     fprintf("\nNo design found that reaches the goal with a smaller box.\n");
     fprintf("Reporting two alternate designs with their goal and box info.\n\n");
 
-    % report two alternate designs that got close
-    alt1_RA = RA_orig * 0.85;
-    alt1_R8 = R8_orig;
-    alt1_R1 = R1_orig;
-    alt1_t1 = theta1_orig;
+    % alternate 1: shrink dP1A by 15%
+    alt1_dP1A = dP1A_orig * 0.85;
+    alt1_dP2A = dP2A_orig;
+    alt1_t1   = theta1_orig;
     [~, pA1, bx1] = solveDesign(R2, R23, R14, R3, R4, R36, R46, ...
-        R5, R6, R7, alt1_R8, alt1_RA, alt1_R1, alt1_t1, ...
-        alpha, beta, gamma, x0_base);
+        R5, R6, R7, R8, alt1_dP1A, alt1_dP2A, pinASide, ...
+        R1, alt1_t1, alpha, beta, gamma, x0_base);
     dist1 = sqrt((pA1.Ax - goalX).^2 + (pA1.Ay - goalY).^2);
     [md1, mi1] = min(dist1);
 
     fprintf("=== ALTERNATE DESIGN 1 ===\n");
     fprintf("Ground pivot O4: (%.2f, %.2f) mm  (unchanged)\n", xO4_orig, yO4_orig);
-    fprintf("RA = %.2f mm (reduced),  R8 = %.2f mm\n", alt1_RA, alt1_R8);
+    fprintf("dP1A = %.2f mm (reduced),  dP2A = %.2f mm\n", alt1_dP1A, alt1_dP2A);
     fprintf("Enclosing box: %.2f x %.2f mm,  Area = %.2f mm^2\n", bx1.width, bx1.height, bx1.area);
     fprintf("Closest to goal at theta2 = %d deg: (%.2f, %.2f), dist = %.2f mm\n", ...
         mi1-1, pA1.Ax(mi1), pA1.Ay(mi1), md1);
 
-    alt2_xO4 = xO4_orig + 20;
-    alt2_yO4 = yO4_orig;
-    alt2_R1 = sqrt(alt2_xO4^2 + alt2_yO4^2);
-    alt2_t1 = atan2(alt2_yO4, alt2_xO4);
+    % alternate 2: rotate the ground link by +5 deg
+    alt2_t1   = theta1_orig + deg2rad(5);
+    alt2_dP1A = dP1A_orig;
+    alt2_dP2A = dP2A_orig;
     [~, pA2, bx2] = solveDesign(R2, R23, R14, R3, R4, R36, R46, ...
-        R5, R6, R7, R8_orig, RA_orig, alt2_R1, alt2_t1, ...
-        alpha, beta, gamma, x0_base);
+        R5, R6, R7, R8, alt2_dP1A, alt2_dP2A, pinASide, ...
+        R1, alt2_t1, alpha, beta, gamma, x0_base);
     dist2 = sqrt((pA2.Ax - goalX).^2 + (pA2.Ay - goalY).^2);
     [md2, mi2] = min(dist2);
 
     fprintf("\n=== ALTERNATE DESIGN 2 ===\n");
-    fprintf("Ground pivot O4: (%.2f, %.2f) mm  (shifted +20 mm in x)\n", alt2_xO4, alt2_yO4);
-    fprintf("RA = %.2f mm,  R8 = %.2f mm  (unchanged)\n", RA_orig, R8_orig);
+    fprintf("Ground pivot O4: (%.2f, %.2f) mm  [theta1 = %.2f deg, rotated +5 deg]\n", ...
+        R1*cos(alt2_t1), R1*sin(alt2_t1), rad2deg(alt2_t1));
+    fprintf("dP1A = %.2f mm,  dP2A = %.2f mm  (unchanged)\n", alt2_dP1A, alt2_dP2A);
     fprintf("Enclosing box: %.2f x %.2f mm,  Area = %.2f mm^2\n", bx2.width, bx2.height, bx2.area);
     fprintf("Closest to goal at theta2 = %d deg: (%.2f, %.2f), dist = %.2f mm\n", ...
         mi2-1, pA2.Ax(mi2), pA2.Ay(mi2), md2);
@@ -261,20 +307,20 @@ end
 
 %% comparison table
 fprintf("\n=== SUMMARY TABLE ===\n");
-fprintf("%-20s %10s %10s %10s %10s %10s %12s\n", ...
-    "Design", "xO4", "yO4", "RA", "R8", "Box Area", "Area Change");
-fprintf("%-20s %10.1f %10.1f %10.1f %10.1f %10.0f %12s\n", ...
-    "Original", xO4_orig, yO4_orig, RA_orig, R8_orig, origArea, "baseline");
+fprintf("%-12s %10s %10s %10s %10s %10s %12s\n", ...
+    "Design", "xO4", "yO4", "dP1A", "dP2A", "Box Area", "Area Change");
+fprintf("%-12s %10.1f %10.1f %10.1f %10.1f %10.0f %12s\n", ...
+    "Original", xO4_orig, yO4_orig, dP1A_orig, dP2A_orig, origArea, "baseline");
 
 if ~isempty(results)
     best = results(1);
-    fprintf("%-20s %10.1f %10.1f %10.1f %10.1f %10.0f %11.1f%%\n", ...
-        "Best", best.xO4, best.yO4, best.RA, best.R8, best.area, ...
+    fprintf("%-12s %10.1f %10.1f %10.1f %10.1f %10.0f %11.1f%%\n", ...
+        "Best", best.xO4, best.yO4, best.dP1A, best.dP2A, best.area, ...
         (1-best.area/origArea)*100);
     if length(results) >= 2
         alt = results(2);
-        fprintf("%-20s %10.1f %10.1f %10.1f %10.1f %10.0f %11.1f%%\n", ...
-            "Alternate", alt.xO4, alt.yO4, alt.RA, alt.R8, alt.area, ...
+        fprintf("%-12s %10.1f %10.1f %10.1f %10.1f %10.0f %11.1f%%\n", ...
+            "Alternate", alt.xO4, alt.yO4, alt.dP1A, alt.dP2A, alt.area, ...
             (1-alt.area/origArea)*100);
     end
 end
@@ -284,11 +330,17 @@ end
 %  ========================================================================
 
 function [allAngles, pinA, boxInfo] = solveDesign(R2, R23, R14, R3, R4, ...
-    R36, R46, R5, R6, R7, R8, RA, R1, theta1, alpha, beta, gamma, x0)
+    R36, R46, R5, R6, R7, R8, dP1A, dP2A, pinASide, R1, theta1, ...
+    alpha, beta, gamma, x0)
 % solves the full kinematics for theta2 = 0:120 deg and returns
 % posture angles, Pin A coordinates, and bounding box info at theta2 = 0.
+% Pin A is NOT collinear with the two link-8 pins — its position is
+% triangulated from the rigid triangle P1-P2-PinA with sides R8, dP1A, dP2A.
 
-    RAtot = R8 + RA;
+    % local-frame (x along P1->P2) coordinates of Pin A
+    pinA_xL = (dP1A^2 - dP2A^2 + R8^2) / (2*R8);
+    pinA_yL = pinASide * sqrt(max(0, dP1A^2 - pinA_xL^2));
+
     in = 0:120;
     theta2_vals = deg2rad(in);
     N = length(theta2_vals);
@@ -342,11 +394,7 @@ function [allAngles, pinA, boxInfo] = solveDesign(R2, R23, R14, R3, R4, ...
         rawAngles(:, k) = x;
 
         theta23 = x(1); theta14 = x(2); theta46 = x(3);
-        theta36 = x(4); theta8 = x(5);  theta7 = x(6);
-
-        % Pin A position
-        Ax(k) = R2*cos(theta2) + R4*cos(theta23+gamma) + R6*cos(theta46) - RAtot*cos(theta8);
-        Ay(k) = R2*sin(theta2) + R4*sin(theta23+gamma) + R6*sin(theta46) - RAtot*sin(theta8);
+        theta8 = x(5);  theta7 = x(6);
 
         % all joint positions at this theta2
         O2 = [0, 0];
@@ -359,7 +407,15 @@ function [allAngles, pinA, boxInfo] = solveDesign(R2, R23, R14, R3, R4, ...
         P1      = JointB + [R6*cos(theta46), R6*sin(theta46)];
         P2      = P1 - [R8*cos(theta8), R8*sin(theta8)];
         JointE7 = P2 + [R7*cos(theta7), R7*sin(theta7)];
-        PinA_pos = [Ax(k), Ay(k)];
+
+        % triangulate Pin A from the rigid P1-P2-PinA triangle
+        % unit vector along P1->P2 and its CCW perpendicular
+        u = (P2 - P1) / R8;
+        v = [-u(2), u(1)];
+        PinA_pos = P1 + pinA_xL*u + pinA_yL*v;
+        Ax(k) = PinA_pos(1);
+        Ay(k) = PinA_pos(2);
+
         allJoints(:,:,k) = [O2; O4; JointA; Joint43; JointB; JointD; JointC; P1; P2; JointE7; PinA_pos];
     end
 
@@ -413,8 +469,8 @@ function plotMechanism(joints, pinAx, pinAy, boxInfo)
     plot([B(1) P1(1)], [B(2) P1(2)], Color=[0 0.6 0.6], LineWidth=2)
     % link 7
     plot([E7(1) P2(1)], [E7(2) P2(2)], Color=[0.6 0.3 0], LineWidth=2)
-    % link 8 (P1-P2-PinA)
-    plot([P1(1) P2(1) pinAx], [P1(2) P2(2) pinAy], Color=[0.5 0 0.5], LineWidth=2)
+    % link 8 (P1-P2-PinA triangle)
+    plot([P1(1) P2(1) pinAx P1(1)], [P1(2) P2(2) pinAy P1(2)], Color=[0.5 0 0.5], LineWidth=2)
 
     % draw joints
     plot(joints(:,1), joints(:,2), "ko", MarkerSize=6, MarkerFaceColor="k")
@@ -432,16 +488,16 @@ function plotMechanism(joints, pinAx, pinAy, boxInfo)
     hold off
 end
 
-function plotAnglesFigure(allJoints, pinA, anglesDeg, goalX, goalY, label)
+function tl = plotAnglesFigure(allJoints, pinA, anglesDeg, goalX, goalY, label, parent)
 % plot mechanism, bounding box, and pin A path at multiple theta2 angles
     n = length(anglesDeg);
     nCols = ceil(sqrt(n));
     nRows = ceil(n / nCols);
-    figure("Position", [100, 100, 350*nCols, 300*nRows])
+    tl = tiledlayout(parent, nRows, nCols);
     for i = 1:n
         ang = anglesDeg(i);
         idx = ang + 1; % theta2 = 0:120 deg, 1-indexed
-        subplot(nRows, nCols, i)
+        nexttile(tl)
         jts = allJoints(:,:,idx);
         bx = boxFromPts(jts);
         plotMechanism(jts, pinA.Ax(idx), pinA.Ay(idx), bx);
@@ -451,7 +507,7 @@ function plotAnglesFigure(allJoints, pinA, anglesDeg, goalX, goalY, label)
         title(sprintf("\\theta_2 = %d°  (Box: %.0f × %.0f mm)", ang, bx.width, bx.height))
         hold off
     end
-    sgtitle(label + " Design: Mechanism, Bounding Box, and Pin A Path")
+    title(tl, label + " Design: Mechanism, Bounding Box, and Pin A Path")
 end
 
 function printAngleTable(allJoints, label, xlsxPath)
