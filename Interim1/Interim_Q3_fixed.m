@@ -18,6 +18,7 @@ RA = 336.9;         % distance from joint 7/8 to Pin A along link 8
 theta1 = deg2rad(180 - atand(70.6/237.2));
 alpha = deg2rad(3.2);
 beta = deg2rad(3.5);
+gamma = deg2rad(1.8);
 
 % create the range of input angles
 in = 0:120;
@@ -54,18 +55,18 @@ for k = 1:length(theta2_vals)
         % store the force matrix
         f = [R2*cos(theta2) + R23*cos(theta23) - R14*cos(theta14) - R1*cos(theta1);
             R2*sin(theta2) + R23*sin(theta23) - R14*sin(theta14) - R1*sin(theta1);
-            R2*cos(theta2) + R4*cos(theta23) + R46*cos(theta46) - R36*cos(theta36) - R3*cos(theta14+alpha) - R1*cos(theta1);
-            R2*sin(theta2) + R4*sin(theta23) + R46*sin(theta46) - R36*sin(theta36) - R3*sin(theta14+alpha) - R1*sin(theta1);
-            R2*cos(theta2) + R4*cos(theta23) + R6*cos(theta46) - R8*cos(theta8) + R7*cos(theta7) - R5*cos(theta36+beta) - R3*cos(theta14+alpha) - R1*cos(theta1);
-            R2*sin(theta2) + R4*sin(theta23) + R6*sin(theta46) - R8*sin(theta8) + R7*sin(theta7) - R5*sin(theta36+beta) - R3*sin(theta14+alpha) - R1*sin(theta1)];
+            R2*cos(theta2) + R4*cos(theta23+gamma) + R46*cos(theta46) - R36*cos(theta36) - R3*cos(theta14+alpha) - R1*cos(theta1);
+            R2*sin(theta2) + R4*sin(theta23+gamma) + R46*sin(theta46) - R36*sin(theta36) - R3*sin(theta14+alpha) - R1*sin(theta1);
+            R2*cos(theta2) + R4*cos(theta23+gamma) + R6*cos(theta46) - R8*cos(theta8) + R7*cos(theta7) - R5*cos(theta36+beta) - R3*cos(theta14+alpha) - R1*cos(theta1);
+            R2*sin(theta2) + R4*sin(theta23+gamma) + R6*sin(theta46) - R8*sin(theta8) + R7*sin(theta7) - R5*sin(theta36+beta) - R3*sin(theta14+alpha) - R1*sin(theta1)];
 
         % store the jacobian
         J = [-R23*sin(theta23),  R14*sin(theta14),              0,                    0,             0,            0;
             R23*cos(theta23), -R14*cos(theta14),              0,                    0,             0,            0;
-            -R4*sin(theta23),   R3*sin(theta14+alpha), -R46*sin(theta46),  R36*sin(theta36),       0,            0;
-            R4*cos(theta23),  -R3*cos(theta14+alpha),  R46*cos(theta46), -R36*cos(theta36),       0,            0;
-            -R4*sin(theta23),   R3*sin(theta14+alpha), -R6*sin(theta46),   R5*sin(theta36+beta),  R8*sin(theta8), -R7*sin(theta7);
-            R4*cos(theta23),  -R3*cos(theta14+alpha),  R6*cos(theta46),  -R5*cos(theta36+beta), -R8*cos(theta8),  R7*cos(theta7)];
+            -R4*sin(theta23+gamma),   R3*sin(theta14+alpha), -R46*sin(theta46),  R36*sin(theta36),       0,            0;
+            R4*cos(theta23+gamma),  -R3*cos(theta14+alpha),  R46*cos(theta46), -R36*cos(theta36),       0,            0;
+            -R4*sin(theta23+gamma),   R3*sin(theta14+alpha), -R6*sin(theta46),   R5*sin(theta36+beta),  R8*sin(theta8), -R7*sin(theta7);
+            R4*cos(theta23+gamma),  -R3*cos(theta14+alpha),  R6*cos(theta46),  -R5*cos(theta36+beta), -R8*cos(theta8),  R7*cos(theta7)];
 
         dx = J\f;
         x_new = x - dx;
@@ -93,10 +94,10 @@ for k = 1:length(theta2_vals)
     theta36 = x(4); theta8  = x(5); theta7  = x(6);
     J = [-R23*sin(theta23),  R14*sin(theta14),              0,                    0,             0,            0;
           R23*cos(theta23), -R14*cos(theta14),              0,                    0,             0,            0;
-         -R4*sin(theta23),   R3*sin(theta14+alpha), -R46*sin(theta46),  R36*sin(theta36),       0,            0;
-          R4*cos(theta23),  -R3*cos(theta14+alpha),  R46*cos(theta46), -R36*cos(theta36),       0,            0;
-         -R4*sin(theta23),   R3*sin(theta14+alpha), -R6*sin(theta46),   R5*sin(theta36+beta),  R8*sin(theta8), -R7*sin(theta7);
-          R4*cos(theta23),  -R3*cos(theta14+alpha),  R6*cos(theta46),  -R5*cos(theta36+beta), -R8*cos(theta8),  R7*cos(theta7)];
+         -R4*sin(theta23+gamma),   R3*sin(theta14+alpha), -R46*sin(theta46),  R36*sin(theta36),       0,            0;
+          R4*cos(theta23+gamma),  -R3*cos(theta14+alpha),  R46*cos(theta46), -R36*cos(theta36),       0,            0;
+         -R4*sin(theta23+gamma),   R3*sin(theta14+alpha), -R6*sin(theta46),   R5*sin(theta36+beta),  R8*sin(theta8), -R7*sin(theta7);
+          R4*cos(theta23+gamma),  -R3*cos(theta14+alpha),  R6*cos(theta46),  -R5*cos(theta36+beta), -R8*cos(theta8),  R7*cos(theta7)];
     df_dt2 = [-R2*sin(theta2);
                R2*cos(theta2);
               -R2*sin(theta2);
@@ -107,8 +108,8 @@ for k = 1:length(theta2_vals)
 
     % compute Pin A position: Origin -> R2 -> R4 -> R6 -> (R8+RA) extension
     % theta4 = theta23, theta6 = theta46
-    Ax(k) = R2*cos(theta2) + R4*cos(x(1)) + R6*cos(x(3)) - (R8 + RA)*cos(x(5));
-    Ay(k) = R2*sin(theta2) + R4*sin(x(1)) + R6*sin(x(3)) - (R8 + RA)*sin(x(5));
+    Ax(k) = R2*cos(theta2) + R4*cos(x(1)+gamma) + R6*cos(x(3)) - (R8 + RA)*cos(x(5));
+    Ay(k) = R2*sin(theta2) + R4*sin(x(1)+gamma) + R6*sin(x(3)) - (R8 + RA)*sin(x(5));
 end
 
 %% Post-process Angles
@@ -123,7 +124,7 @@ theta7_vals  = rad2deg(unwrap(theta7_vals));
 
 % calculate actual link angles using constraint equations
 theta3_vals = theta14_vals + rad2deg(alpha);
-theta4_vals = theta23_vals;
+theta4_vals = theta23_vals + rad2deg(gamma);
 theta5_vals = theta36_vals + rad2deg(beta);
 theta6_vals = theta46_vals;
 theta7_vals = theta7_vals +180;

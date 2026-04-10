@@ -21,6 +21,7 @@ RA = 336.9;         % distance from joint 7/8 to Pin A along link 8
 theta1 = deg2rad(180 - atand(70.6/237.2));
 alpha = deg2rad(3.2);
 beta = deg2rad(3.5);
+gamma = deg2rad(1.8);
 
 omega2 = 1;     % rad/s
 alpha2 = 0;     % rad/s^2
@@ -74,17 +75,17 @@ for k = 1:length(theta2_vals)
     while true
         f = [R2*cos(theta2) + R23*cos(theta23) - R14*cos(theta14) - R1*cos(theta1);
             R2*sin(theta2) + R23*sin(theta23) - R14*sin(theta14) - R1*sin(theta1);
-            R2*cos(theta2) + R4*cos(theta23) + R46*cos(theta46) - R36*cos(theta36) - R3*cos(theta14+alpha) - R1*cos(theta1);
-            R2*sin(theta2) + R4*sin(theta23) + R46*sin(theta46) - R36*sin(theta36) - R3*sin(theta14+alpha) - R1*sin(theta1);
-            R2*cos(theta2) + R4*cos(theta23) + R6*cos(theta46) - R8*cos(theta8) + R7*cos(theta7) - R5*cos(theta36+beta) - R3*cos(theta14+alpha) - R1*cos(theta1);
-            R2*sin(theta2) + R4*sin(theta23) + R6*sin(theta46) - R8*sin(theta8) + R7*sin(theta7) - R5*sin(theta36+beta) - R3*sin(theta14+alpha) - R1*sin(theta1)];
+            R2*cos(theta2) + R4*cos(theta23+gamma) + R46*cos(theta46) - R36*cos(theta36) - R3*cos(theta14+alpha) - R1*cos(theta1);
+            R2*sin(theta2) + R4*sin(theta23+gamma) + R46*sin(theta46) - R36*sin(theta36) - R3*sin(theta14+alpha) - R1*sin(theta1);
+            R2*cos(theta2) + R4*cos(theta23+gamma) + R6*cos(theta46) - R8*cos(theta8) + R7*cos(theta7) - R5*cos(theta36+beta) - R3*cos(theta14+alpha) - R1*cos(theta1);
+            R2*sin(theta2) + R4*sin(theta23+gamma) + R6*sin(theta46) - R8*sin(theta8) + R7*sin(theta7) - R5*sin(theta36+beta) - R3*sin(theta14+alpha) - R1*sin(theta1)];
 
         J = [-R23*sin(theta23),  R14*sin(theta14),              0,              0,             0,            0;
             R23*cos(theta23), -R14*cos(theta14),              0,              0,             0,            0;
-            -R4*sin(theta23),   R3*sin(theta14+alpha), -R46*sin(theta46),  R36*sin(theta36),  0,            0;
-            R4*cos(theta23),  -R3*cos(theta14+alpha),  R46*cos(theta46), -R36*cos(theta36),  0,            0;
-            -R4*sin(theta23),   R3*sin(theta14+alpha), -R6*sin(theta46),   R5*sin(theta36+beta),  R8*sin(theta8), -R7*sin(theta7);
-            R4*cos(theta23),  -R3*cos(theta14+alpha),  R6*cos(theta46),  -R5*cos(theta36+beta), -R8*cos(theta8),  R7*cos(theta7)];
+            -R4*sin(theta23+gamma),   R3*sin(theta14+alpha), -R46*sin(theta46),  R36*sin(theta36),  0,            0;
+            R4*cos(theta23+gamma),  -R3*cos(theta14+alpha),  R46*cos(theta46), -R36*cos(theta36),  0,            0;
+            -R4*sin(theta23+gamma),   R3*sin(theta14+alpha), -R6*sin(theta46),   R5*sin(theta36+beta),  R8*sin(theta8), -R7*sin(theta7);
+            R4*cos(theta23+gamma),  -R3*cos(theta14+alpha),  R6*cos(theta46),  -R5*cos(theta36+beta), -R8*cos(theta8),  R7*cos(theta7)];
 
         dx = J\f;
         x_new = x - dx;
@@ -132,10 +133,10 @@ for k = 1:length(theta2_vals)
 
     rhs_acc = [R2*cos(theta2)*omega2^2 + R23*cos(theta23)*w23^2 - R14*cos(theta14)*w14^2;
         R2*sin(theta2)*omega2^2 + R23*sin(theta23)*w23^2 - R14*sin(theta14)*w14^2;
-        R2*cos(theta2)*omega2^2 + R4*cos(theta23)*w23^2 + R46*cos(theta46)*w46^2 - R36*cos(theta36)*w36^2 - R3*cos(theta14+alpha)*w14^2;
-        R2*sin(theta2)*omega2^2 + R4*sin(theta23)*w23^2 + R46*sin(theta46)*w46^2 - R36*sin(theta36)*w36^2 - R3*sin(theta14+alpha)*w14^2;
-        R2*cos(theta2)*omega2^2 + R4*cos(theta23)*w23^2 + R6*cos(theta46)*w46^2 - R8*cos(theta8)*w8^2 + R7*cos(theta7)*w7^2 - R5*cos(theta36+beta)*w36^2 - R3*cos(theta14+alpha)*w14^2;
-        R2*sin(theta2)*omega2^2 + R4*sin(theta23)*w23^2 + R6*sin(theta46)*w46^2 - R8*sin(theta8)*w8^2 + R7*sin(theta7)*w7^2 - R5*sin(theta36+beta)*w36^2 - R3*sin(theta14+alpha)*w14^2];
+        R2*cos(theta2)*omega2^2 + R4*cos(theta23+gamma)*w23^2 + R46*cos(theta46)*w46^2 - R36*cos(theta36)*w36^2 - R3*cos(theta14+alpha)*w14^2;
+        R2*sin(theta2)*omega2^2 + R4*sin(theta23+gamma)*w23^2 + R46*sin(theta46)*w46^2 - R36*sin(theta36)*w36^2 - R3*sin(theta14+alpha)*w14^2;
+        R2*cos(theta2)*omega2^2 + R4*cos(theta23+gamma)*w23^2 + R6*cos(theta46)*w46^2 - R8*cos(theta8)*w8^2 + R7*cos(theta7)*w7^2 - R5*cos(theta36+beta)*w36^2 - R3*cos(theta14+alpha)*w14^2;
+        R2*sin(theta2)*omega2^2 + R4*sin(theta23+gamma)*w23^2 + R6*sin(theta46)*w46^2 - R8*sin(theta8)*w8^2 + R7*sin(theta7)*w7^2 - R5*sin(theta36+beta)*w36^2 - R3*sin(theta14+alpha)*w14^2];
 
     alpha_vec = J \ rhs_acc;
 
@@ -151,20 +152,20 @@ for k = 1:length(theta2_vals)
     RAtot = R8 + RA;
 
     % Position
-    Ax(k) = R2*cos(theta2) + R4*cos(theta23) + R6*cos(theta46) - RAtot*cos(theta8);
-    Ay(k) = R2*sin(theta2) + R4*sin(theta23) + R6*sin(theta46) - RAtot*sin(theta8);
+    Ax(k) = R2*cos(theta2) + R4*cos(theta23+gamma) + R6*cos(theta46) - RAtot*cos(theta8);
+    Ay(k) = R2*sin(theta2) + R4*sin(theta23+gamma) + R6*sin(theta46) - RAtot*sin(theta8);
 
     % Velocity (first derivative of position)
-    Ax_dot(k) = -R2*sin(theta2)*omega2 - R4*sin(theta23)*w23 - R6*sin(theta46)*w46 + RAtot*sin(theta8)*w8;
-    Ay_dot(k) =  R2*cos(theta2)*omega2 + R4*cos(theta23)*w23 + R6*cos(theta46)*w46 - RAtot*cos(theta8)*w8;
+    Ax_dot(k) = -R2*sin(theta2)*omega2 - R4*sin(theta23+gamma)*w23 - R6*sin(theta46)*w46 + RAtot*sin(theta8)*w8;
+    Ay_dot(k) =  R2*cos(theta2)*omega2 + R4*cos(theta23+gamma)*w23 + R6*cos(theta46)*w46 - RAtot*cos(theta8)*w8;
 
     % Acceleration (second derivative of position, with alpha2 = 0)
     Ax_ddot(k) = -R2*cos(theta2)*omega2^2 ...
-        - R4*cos(theta23)*w23^2 - R4*sin(theta23)*a23 ...
+        - R4*cos(theta23+gamma)*w23^2 - R4*sin(theta23+gamma)*a23 ...
         - R6*cos(theta46)*w46^2 - R6*sin(theta46)*a46 ...
         + RAtot*cos(theta8)*w8^2 + RAtot*sin(theta8)*a8;
     Ay_ddot(k) = -R2*sin(theta2)*omega2^2 ...
-        - R4*sin(theta23)*w23^2 + R4*cos(theta23)*a23 ...
+        - R4*sin(theta23+gamma)*w23^2 + R4*cos(theta23+gamma)*a23 ...
         - R6*sin(theta46)*w46^2 + R6*cos(theta46)*a46 ...
         + RAtot*sin(theta8)*w8^2 - RAtot*cos(theta8)*a8;
 end
