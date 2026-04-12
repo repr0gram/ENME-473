@@ -88,7 +88,7 @@ tlOrigAng = plotAnglesFigure(boxInfo.allJoints, pinA, 0:15:120, goalX, goalY, "O
 mechAxesAngles = [mechAxesAngles(:); findobj(tlOrigAng, Type="axes")];
 exportgraphics(tlOrigAng, fullfile(scriptDir, "ENME473_Q7_Original_Angles.png"), Resolution=600);
 
-%% original box table (every 5 deg)
+%% original box table (every 1 deg)
 xlsxPath = fullfile(scriptDir, "ENME473_Q7_BoxDimensions.xlsx");
 if isfile(xlsxPath)
     delete(xlsxPath)
@@ -508,8 +508,8 @@ function tl = plotAnglesFigure(allJoints, pinA, anglesDeg, goalX, goalY, label, 
 end
 
 function printAngleTable(allJoints, label, xlsxPath)
-% print bounding box dimensions and area every 5 deg from 0 to 120
-    angles = (0:5:120)';
+% print bounding box dimensions and area every 1 deg from 0 to 120
+    angles = (0:1:120)';
     N = length(angles);
     width  = zeros(N, 1);
     height = zeros(N, 1);
