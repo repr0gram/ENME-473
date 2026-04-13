@@ -189,6 +189,10 @@ y_sim = y_sim * 1000;
 vx_sim = vx_sim * 1000;
 vy_sim = vy_sim * 1000;
 
+% Shift Simscape data
+x_sim = x_sim - 60;
+y_sim = y_sim - 160;
+
 % Convert time → angle (deg)
 theta_sim_deg = rad2deg(t_sim);   % since omega = 1 rad/s
 
