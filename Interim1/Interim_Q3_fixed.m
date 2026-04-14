@@ -43,7 +43,7 @@ Ay = zeros(1, length(theta2_vals));
 
 % storage for angular velocities
 omegas = zeros(6, length(theta2_vals));
-omega2 = 1; % input angular velocity (rad/s)
+omega2 = 0.5; % input angular velocity (rad/s)
 
 % loop through input values
 for k = 1:length(theta2_vals)
@@ -53,20 +53,20 @@ for k = 1:length(theta2_vals)
 
     while true
         % store the force matrix
-        f = [R2*cos(theta2) + R23*cos(theta23) - R14*cos(theta14) - R1*cos(theta1);
-            R2*sin(theta2) + R23*sin(theta23) - R14*sin(theta14) - R1*sin(theta1);
-            R2*cos(theta2) + R4*cos(theta23+gamma) + R46*cos(theta46) - R36*cos(theta36) - R3*cos(theta14+alpha) - R1*cos(theta1);
-            R2*sin(theta2) + R4*sin(theta23+gamma) + R46*sin(theta46) - R36*sin(theta36) - R3*sin(theta14+alpha) - R1*sin(theta1);
-            R2*cos(theta2) + R4*cos(theta23+gamma) + R6*cos(theta46) - R8*cos(theta8) + R7*cos(theta7) - R5*cos(theta36+beta) - R3*cos(theta14+alpha) - R1*cos(theta1);
-            R2*sin(theta2) + R4*sin(theta23+gamma) + R6*sin(theta46) - R8*sin(theta8) + R7*sin(theta7) - R5*sin(theta36+beta) - R3*sin(theta14+alpha) - R1*sin(theta1)];
+        f = [R2*cos(theta2-gamma) + R23*cos(theta23) - R14*cos(theta14) - R1*cos(theta1);
+            R2*sin(theta2-gamma) + R23*sin(theta23) - R14*sin(theta14) - R1*sin(theta1);
+            R2*cos(theta2-gamma) + R4*cos(theta23) + R46*cos(theta46) - R36*cos(theta36) - R3*cos(theta14+alpha) - R1*cos(theta1);
+            R2*sin(theta2-gamma) + R4*sin(theta23) + R46*sin(theta46) - R36*sin(theta36) - R3*sin(theta14+alpha) - R1*sin(theta1);
+            R2*cos(theta2-gamma) + R4*cos(theta23) + R6*cos(theta46) - R8*cos(theta8) + R7*cos(theta7) - R5*cos(theta36+beta) - R3*cos(theta14+alpha) - R1*cos(theta1);
+            R2*sin(theta2-gamma) + R4*sin(theta23) + R6*sin(theta46) - R8*sin(theta8) + R7*sin(theta7) - R5*sin(theta36+beta) - R3*sin(theta14+alpha) - R1*sin(theta1)];
 
         % store the jacobian
         J = [-R23*sin(theta23),  R14*sin(theta14),              0,                    0,             0,            0;
             R23*cos(theta23), -R14*cos(theta14),              0,                    0,             0,            0;
-            -R4*sin(theta23+gamma),   R3*sin(theta14+alpha), -R46*sin(theta46),  R36*sin(theta36),       0,            0;
-            R4*cos(theta23+gamma),  -R3*cos(theta14+alpha),  R46*cos(theta46), -R36*cos(theta36),       0,            0;
-            -R4*sin(theta23+gamma),   R3*sin(theta14+alpha), -R6*sin(theta46),   R5*sin(theta36+beta),  R8*sin(theta8), -R7*sin(theta7);
-            R4*cos(theta23+gamma),  -R3*cos(theta14+alpha),  R6*cos(theta46),  -R5*cos(theta36+beta), -R8*cos(theta8),  R7*cos(theta7)];
+            -R4*sin(theta23),   R3*sin(theta14+alpha), -R46*sin(theta46),  R36*sin(theta36),       0,            0;
+            R4*cos(theta23),  -R3*cos(theta14+alpha),  R46*cos(theta46), -R36*cos(theta36),       0,            0;
+            -R4*sin(theta23),   R3*sin(theta14+alpha), -R6*sin(theta46),   R5*sin(theta36+beta),  R8*sin(theta8), -R7*sin(theta7);
+            R4*cos(theta23),  -R3*cos(theta14+alpha),  R6*cos(theta46),  -R5*cos(theta36+beta), -R8*cos(theta8),  R7*cos(theta7)];
 
         dx = J\f;
         x_new = x - dx;
@@ -94,22 +94,22 @@ for k = 1:length(theta2_vals)
     theta36 = x(4); theta8  = x(5); theta7  = x(6);
     J = [-R23*sin(theta23),  R14*sin(theta14),              0,                    0,             0,            0;
           R23*cos(theta23), -R14*cos(theta14),              0,                    0,             0,            0;
-         -R4*sin(theta23+gamma),   R3*sin(theta14+alpha), -R46*sin(theta46),  R36*sin(theta36),       0,            0;
-          R4*cos(theta23+gamma),  -R3*cos(theta14+alpha),  R46*cos(theta46), -R36*cos(theta36),       0,            0;
-         -R4*sin(theta23+gamma),   R3*sin(theta14+alpha), -R6*sin(theta46),   R5*sin(theta36+beta),  R8*sin(theta8), -R7*sin(theta7);
-          R4*cos(theta23+gamma),  -R3*cos(theta14+alpha),  R6*cos(theta46),  -R5*cos(theta36+beta), -R8*cos(theta8),  R7*cos(theta7)];
-    df_dt2 = [-R2*sin(theta2);
-               R2*cos(theta2);
-              -R2*sin(theta2);
-               R2*cos(theta2);
-              -R2*sin(theta2);
-               R2*cos(theta2)];
+         -R4*sin(theta23),   R3*sin(theta14+alpha), -R46*sin(theta46),  R36*sin(theta36),       0,            0;
+          R4*cos(theta23),  -R3*cos(theta14+alpha),  R46*cos(theta46), -R36*cos(theta36),       0,            0;
+         -R4*sin(theta23),   R3*sin(theta14+alpha), -R6*sin(theta46),   R5*sin(theta36+beta),  R8*sin(theta8), -R7*sin(theta7);
+          R4*cos(theta23),  -R3*cos(theta14+alpha),  R6*cos(theta46),  -R5*cos(theta36+beta), -R8*cos(theta8),  R7*cos(theta7)];
+    df_dt2 = [-R2*sin(theta2-gamma);
+               R2*cos(theta2-gamma);
+              -R2*sin(theta2-gamma);
+               R2*cos(theta2-gamma);
+              -R2*sin(theta2-gamma);
+               R2*cos(theta2-gamma)];
     omegas(:,k) = J \ (-df_dt2 * omega2);
 
     % compute Pin A position: Origin -> R2 -> R4 -> R6 -> (R8+RA) extension
     % theta4 = theta23, theta6 = theta46
-    Ax(k) = R2*cos(theta2) + R4*cos(x(1)+gamma) + R6*cos(x(3)) - (R8 + RA)*cos(x(5));
-    Ay(k) = R2*sin(theta2) + R4*sin(x(1)+gamma) + R6*sin(x(3)) - (R8 + RA)*sin(x(5));
+    Ax(k) = R2*cos(theta2-gamma) + R4*cos(x(1)) + R6*cos(x(3)) - R8*cos(x(5)) + RA*cos(x(5)+168);
+    Ay(k) = R2*sin(theta2-gamma) + R4*sin(x(1)) + R6*sin(x(3)) - R8*sin(x(5)) + RA*sin(x(5)+168);
 end
 
 %% Post-process Angles
@@ -130,6 +130,8 @@ theta6_vals = theta46_vals;
 theta7_vals = theta7_vals +180;
 theta8_vals = theta8_vals +180;
 
+outDir = fileparts(mfilename('fullpath'));
+
 %% Plot 1: Link Angles vs Input Angle (Q3a)
 figure
 plot(in, theta3_vals, 'LineWidth', 2)
@@ -145,7 +147,7 @@ title('Link Angles vs Input Angle')
 legend('\theta_3','\theta_4','\theta_5','\theta_6','\theta_7','\theta_8','Location','best')
 grid on
 box on
-exportgraphics(gcf, 'ENME_473_Project_3a.png', 'Resolution', 600);
+exportgraphics(gcf, fullfile(outDir, 'ENME_473_Project_3a.png'), 'Resolution', 600);
 
 %% Plot 2: Path Traced by Pin A (Q3c)
 figure
@@ -166,10 +168,10 @@ legend('Path of Pin A', '\theta_2 = 0°', '\theta_2 = 120°', 'Location', 'best'
 grid on
 box on
 axis equal
-exportgraphics(gcf, 'ENME_473_Project_3c.png', 'Resolution', 600);
+exportgraphics(gcf, fullfile(outDir, 'ENME_473_Project_3c.png'), 'Resolution', 600);
 
 %% Write tables to Excel
-filename = 'Q3_Results.xlsx';
+filename = fullfile(outDir, 'Q3_Results.xlsx');
 
 % Q3a - Link Angles
 T_angles = table(in', theta3_vals', theta4_vals', theta5_vals', ...
