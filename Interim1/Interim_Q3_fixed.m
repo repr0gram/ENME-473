@@ -108,8 +108,8 @@ for k = 1:length(theta2_vals)
 
     % compute Pin A position: Origin -> R2 -> R4 -> R6 -> (R8+RA) extension
     % theta4 = theta23, theta6 = theta46
-    Ax(k) = R2*cos(theta2-gamma) + R4*cos(x(1)) + R6*cos(x(3)) - R8*cos(x(5)) + RA*cos(x(5)+168);
-    Ay(k) = R2*sin(theta2-gamma) + R4*sin(x(1)) + R6*sin(x(3)) - R8*sin(x(5)) + RA*sin(x(5)+168);
+    Ax(k) = R2*cos(theta2-gamma) + R4*cos(x(1)) + R6*cos(x(3)) - R8*cos(x(5)) + RA*cos(x(5)+deg2rad(168));
+    Ay(k) = R2*sin(theta2-gamma) + R4*sin(x(1)) + R6*sin(x(3)) - R8*sin(x(5)) + RA*sin(x(5)+deg2rad(168));
 end
 
 %% Post-process Angles
@@ -130,7 +130,19 @@ theta6_vals = theta46_vals;
 theta7_vals = theta7_vals +180;
 theta8_vals = theta8_vals +180;
 
-outDir = fileparts(mfilename('fullpath'));
+% resolve repo-root/exports as the output directory
+scriptDir = fileparts(mfilename('fullpath'));
+repoRoot = scriptDir;
+while ~isfolder(fullfile(repoRoot, '.git'))
+    parentDir = fileparts(repoRoot);
+    if strcmp(parentDir, repoRoot)
+        repoRoot = scriptDir; % fallback if .git not found
+        break;
+    end
+    repoRoot = parentDir;
+end
+outDir = fullfile(repoRoot, 'exports');
+if ~isfolder(outDir); mkdir(outDir); end
 
 %% Plot 1: Link Angles vs Input Angle (Q3a)
 figure

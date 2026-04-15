@@ -15,7 +15,19 @@
 % bounding box rather than hunting for goal-reach.
 
 clc; clear; close all;
+% resolve repo-root/exports as the output directory
 scriptDir = fileparts(mfilename('fullpath'));
+repoRoot = scriptDir;
+while ~isfolder(fullfile(repoRoot, '.git'))
+    parentDir = fileparts(repoRoot);
+    if strcmp(parentDir, repoRoot)
+        repoRoot = scriptDir; % fallback if .git not found
+        break;
+    end
+    repoRoot = parentDir;
+end
+scriptDir = fullfile(repoRoot, 'exports');
+if ~isfolder(scriptDir); mkdir(scriptDir); end
 
 % single tabbed figure window to hold all plots
 mainFig = figure(Name="ENME 473 Q7 Results", Position=[100 100 1400 900]);

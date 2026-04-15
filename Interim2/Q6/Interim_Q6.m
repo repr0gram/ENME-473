@@ -369,7 +369,19 @@ alpha8_plot_vals = alpha8_vals;
 
 %% =========================
 %  PLOTS
+% resolve repo-root/exports as the output directory
 scriptDir = fileparts(mfilename('fullpath'));
+repoRoot = scriptDir;
+while ~isfolder(fullfile(repoRoot, '.git'))
+    parentDir = fileparts(repoRoot);
+    if strcmp(parentDir, repoRoot)
+        repoRoot = scriptDir; % fallback if .git not found
+        break;
+    end
+    repoRoot = parentDir;
+end
+scriptDir = fullfile(repoRoot, 'exports');
+if ~isfolder(scriptDir); mkdir(scriptDir); end
 
 % 1) Link angles vs input angle
 figure
